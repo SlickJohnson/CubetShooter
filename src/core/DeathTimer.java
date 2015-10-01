@@ -19,7 +19,7 @@ public class DeathTimer implements Runnable {
 
 			e.printStackTrace();
 		}
-		ghost.setPosition(GameLauncher.WIDTH - 50, GameLauncher.HEIGHT / 2);
+		ghost.setPosition(GameLauncher.screenWidth - 50, GameLauncher.screenHeight / 2);
 		ghost.revive();
 		System.out.println("enemy is back " + ghost.isDead());
 

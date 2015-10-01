@@ -12,21 +12,24 @@ public class Sprite {
 	private double velocityY;
 	private double width;
 	private double height;
-	private double HEALTH = 5;
+	private static final double MAX_HEATLH = 5;
+	private double health = MAX_HEATLH;
 	private boolean isDead = false;
 	double dropSpeed = 0;
 	private boolean isJumping = false;
-	private double TERMINAL_VELOCITY = 30;
-	double gravity = 1;
+	private static final double TERMINAL_VELOCITY = 300;
+	double gravity = 3;
 	private boolean isFalling = false;
 	public int jump = 0;
 	boolean groundCollision = true;
 
-	public Sprite() {
+	public Sprite(Image img) {
 		positionX = 0;
 		positionY = 0;
 		velocityX = 0;
 		velocityY = 0;
+		setImage(img);
+		GameLauncher.spriteList.add(this);
 	}
 
 	public void setImage(Image i) {
@@ -35,10 +38,10 @@ public class Sprite {
 		height = i.getHeight();
 	}
 
-	public void setImage(String filename) {
-		Image i = new Image(filename);
-		setImage(i);
-	}
+	// public void setImage(String filename) {
+	// Image i = new Image(filename);
+	// setImage(i);
+	// }
 
 	public void setPosition(double x, double y) {
 		positionX = x;
@@ -70,9 +73,8 @@ public class Sprite {
 	}
 
 	public void render(GraphicsContext gc) {
-		gc.drawImage(image, positionX, positionY);
+		gc.drawImage(getImage(), positionX, positionY);
 		if (!this.getBoundary().intersects(GameLauncher.ground) && !isJumping) {
-			// if (jump < 2)
 			setFalling(true);
 			this.dropSpeed = this.dropSpeed + gravity;
 			if (this.dropSpeed > TERMINAL_VELOCITY) {
@@ -81,7 +83,8 @@ public class Sprite {
 			this.positionY += this.dropSpeed;
 		} else {
 			isFalling = false;
-			if (this.positionY > GameLauncher.ground.getMinY()-40 && groundCollision) this.positionY = GameLauncher.ground.getMinY()-45;
+			if (this.positionY > GameLauncher.ground.getMinY() - 40 && groundCollision)
+				this.positionY = GameLauncher.ground.getMinY() - 45;
 		}
 	}
 
@@ -98,12 +101,12 @@ public class Sprite {
 	}
 
 	public void damage() {
-		HEALTH--;
-		if (HEALTH <= 0) {
+		health--;
+		if (health <= 0) {
 			isDead = true;
 			new Thread(new DeathTimer(this)).start();
 		}
-		System.out.println(HEALTH);
+		System.out.println(health);
 	}
 
 	public boolean isDead() {
@@ -112,7 +115,7 @@ public class Sprite {
 
 	public void revive() {
 		isDead = false;
-		HEALTH = 5;
+		health = MAX_HEATLH;
 		dropSpeed = 0;
 	}
 
@@ -132,5 +135,9 @@ public class Sprite {
 
 	public void setFalling(boolean isFalling) {
 		this.isFalling = isFalling;
+	}
+
+	public Image getImage() {
+		return image;
 	}
 }

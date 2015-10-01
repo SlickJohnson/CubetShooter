@@ -13,19 +13,23 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyEvent;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 public class GameLauncher extends Application {
-	public static final double HEIGHT = 720;
-	public static final double WIDTH = 1366;
+	public static double screenHeight;
+	public static double screenWidth;
 	public static GameLauncher game;
-	Image space;
-	Sprite player, bulletSp, enemy;
+	Image space, playerSp, enemySp;
+	Sprite player, enemy;
 	public static Rectangle2D ground;
 	long lastNanoTime;
-	double speed = 300;
+	double speed = 20;
+	double velocity = 0;
 
-	ArrayList<Projectile> bulletList;
+	public static ArrayList<Projectile> bulletList;
+	public static ArrayList<Sprite> spriteList;
+	private boolean shot = true;
 	public static Sound shoot = new Sound("/sounds/laser.wav");
 
 	public static void main(String[] args) {
@@ -33,31 +37,45 @@ public class GameLauncher extends Application {
 	}
 
 	public void init() {
+		// init
 		game = this;
-		player = new Sprite();
-		player.setImage(new Image("player.png"));
-		enemy = new Sprite();
-		enemy.setImage(new Image("enemy.png"));
-		bulletSp = new Sprite();
-		bulletSp.setImage(new Image("bullet.png"));
-		space = new Image("map.png");
-		player.setPosition(0, HEIGHT / 2);
-		enemy.setPosition(WIDTH - 50, HEIGHT / 2);
-		ground = new Rectangle2D(0, (HEIGHT / 3) + (HEIGHT / 2), WIDTH, 290);
-		lastNanoTime = System.nanoTime();
+		spriteList = new ArrayList<Sprite>();
 		bulletList = new ArrayList<Projectile>();
+		lastNanoTime = System.nanoTime();
+		
+		
+		// environment
+		space = new Image("map.png");
+
+		// sprites
+		playerSp = new Image("player.png");
+		enemySp = new Image("enemy.png");
+
+		// entities
+		player = new Sprite(playerSp);
+		enemy = new Sprite(enemySp);
+
 	}
 
 	@Override
-	public void start(Stage stage) throws Exception {
+	public void start(Stage stage) {
 		stage.setTitle("LOL");
-
 		Group root = new Group();
 		Scene scene = new Scene(root);
 		stage.setScene(scene);
+		stage.setMaximized(true);
 
-		Canvas canvas = new Canvas(WIDTH, HEIGHT);
+		screenHeight = Screen.getPrimary().getVisualBounds().getHeight();
+		System.out.println(screenHeight);
+		screenWidth = Screen.getPrimary().getVisualBounds().getWidth();
+
+		Canvas canvas = new Canvas(screenWidth, screenHeight);
 		root.getChildren().add(canvas);
+
+		ground = new Rectangle2D(0, (screenHeight / 3) + (screenHeight / 2), screenWidth, 290);
+		player.setPosition(0, screenHeight / 2);
+		enemy.setPosition(screenWidth - 50, screenHeight / 2);
+
 		ArrayList<String> input = new ArrayList<String>();
 
 		scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
@@ -81,38 +99,74 @@ public class GameLauncher extends Application {
 
 		new AnimationTimer() {
 
+			private int dir;
+			private double xVel;
+
 			@Override
 			public void handle(long currentNanoTime) {
 				double elapsedTime = (currentNanoTime - lastNanoTime) / 1000000000.0;
 				lastNanoTime = currentNanoTime;
 
 				player.setVelocity(0, 0);
-				if (input.contains("D"))
-					player.addVelocity(speed, 0);
-				if (input.contains("A"))
-					player.addVelocity(-1 * speed, 0);
-				if (input.contains("J")) {
-					if (!shoot.isActive()) {
-						shoot.play(1);
-						Projectile bullet = new Projectile(player.getPositionX() + 50, player.getPositionY() + 20, gc,
-								WIDTH);
-						bullet.setImage(new Image("bullet.png"));
-						bulletList.add(bullet);
-						bullet.run();
+				if (input.contains("D") || input.contains("A")) {
+					if (input.contains("D")) {
+						if (dir == 1 || velocity <= speed) {
+							velocity += speed;
+							dir = 1;
+						} else {
+							velocity -= (int) velocity / 10;
+						}
 					}
 
-				}
-				if (input.contains("K") && !player.isFalling()) {
+					if (input.contains("A")) {
+						if (dir == -1 || velocity <= speed) {
+							velocity += speed;
+							dir = -1;
+						} else {
+							velocity -= (int) velocity / 10;
+						}
+					}
 
-					player.addVelocity(0, -1000);
+					System.out.println(velocity);
+				} else {
+					if (velocity != 0)
+						velocity -= 5;
+					if (velocity < 0)
+						velocity = 0;
+				}
+				if (input.contains("K")) {
+					if (!shot) {
+
+						shoot.play(1);
+
+						if (dir == 1)
+							velocity -= 300;
+						else
+							velocity += 60;
+
+						player.addVelocity(-500, 0);
+						Projectile bullet = new Projectile(new Image("bullet.png"), player.getPositionX() + 50,
+								player.getPositionY() + 20, gc, screenWidth);
+						bullet.run();
+						shot = true;
+					}
+				} else
+					shot = false;
+
+				if (input.contains("J") && !player.isJumping() && !player.isFalling()) {
+
+					xVel = -2000;
 
 					player.jump(true);
 
 					System.out.println(player.jump);
 				} else {
 					player.jump(false);
+					if (player.getBoundary().intersects(ground))
+						xVel = 0;
 				}
-
+				// System.out.println(xVel);
+				player.addVelocity(dir * velocity, xVel);
 				player.update(elapsedTime);
 
 				Iterator<Projectile> bulletIter = bulletList.iterator();
@@ -121,30 +175,21 @@ public class GameLauncher extends Application {
 					if ((enemy.intersects(bullet))) {
 						bulletIter.remove();
 						enemy.damage();
-					} else if ((bullet.getPositionX() > WIDTH)) {
+					} else if ((bullet.getPositionX() > screenWidth)) {
 						bulletIter.remove();
 					}
 				}
 
 				// render
 				gc.drawImage(space, 0, 0);
-				gc.fillRect(0, (HEIGHT / 3) + (HEIGHT / 2), WIDTH, 290);
-				player.render(gc);
-
-				enemy.render(gc);
-
-				for (Projectile b : bulletList) {
-
+				gc.fillRect(0, (screenHeight / 3) + (screenHeight / 2), screenWidth, 290);
+				for (Sprite s : spriteList)
+					s.render(gc);
+				for (Projectile b : bulletList)
 					b.render(gc);
-
-				}
-
 			}
-
 		}.start();
-
 		stage.show();
-
 	}
 
 }
