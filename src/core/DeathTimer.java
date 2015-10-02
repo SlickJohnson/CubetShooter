@@ -2,11 +2,11 @@ package core;
 
 public class DeathTimer implements Runnable {
 
-	Sprite ghost;
+	Mob ghost;
 	long timer = 2000;
 
-	public DeathTimer(Sprite sprite) {
-		ghost = sprite;
+	public DeathTimer(Mob mob) {
+		ghost = mob;
 	}
 
 	@Override

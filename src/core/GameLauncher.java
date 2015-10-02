@@ -13,6 +13,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.paint.Color;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
@@ -20,17 +21,20 @@ public class GameLauncher extends Application {
 	public static double screenHeight;
 	public static double screenWidth;
 	public static GameLauncher game;
-	Image space, playerSp, enemySp;
-	Sprite player, enemy;
+	Sprite space, playerSp, enemySp;
+	Mob player, enemy;
 	public static Rectangle2D ground;
 	long lastNanoTime;
 	double speed = 20;
 	double velocity = 0;
 
 	public static ArrayList<Projectile> bulletList;
-	public static ArrayList<Sprite> spriteList;
+	public static ArrayList<Mob> mobList;
 	private boolean shot = true;
-	public static Sound shoot = new Sound("/sounds/laser.wav");
+	public static Sound shoot = new Sound("/sounds/hit_1.wav");
+	public static Sound mg = new Sound("/sounds/hit_3.wav");
+	public static Sound hurtPistol = new Sound("/sounds/hit_2.wav");
+	public static Sound hurtMg = new Sound("/sounds/Hurt2.wav");
 
 	public static void main(String[] args) {
 		launch(args);
@@ -39,21 +43,20 @@ public class GameLauncher extends Application {
 	public void init() {
 		// init
 		game = this;
-		spriteList = new ArrayList<Sprite>();
+		mobList = new ArrayList<Mob>();
 		bulletList = new ArrayList<Projectile>();
 		lastNanoTime = System.nanoTime();
-		
-		
+
 		// environment
-		space = new Image("map.png");
+		space = new Sprite("space.jpg");
 
 		// sprites
-		playerSp = new Image("player.png");
-		enemySp = new Image("enemy.png");
+		playerSp = new Sprite("player.png");
+		enemySp = new Sprite("enemy.png");
 
 		// entities
-		player = new Sprite(playerSp);
-		enemy = new Sprite(enemySp);
+		player = new Mob(playerSp, "Player");
+		enemy = new Mob(enemySp, "Enemy");
 
 	}
 
@@ -136,22 +139,30 @@ public class GameLauncher extends Application {
 				}
 				if (input.contains("K")) {
 					if (!shot) {
-
 						shoot.play(1);
-
 						if (dir == 1)
 							velocity -= 300;
 						else
 							velocity += 60;
-
-						player.addVelocity(-500, 0);
-						Projectile bullet = new Projectile(new Image("bullet.png"), player.getPositionX() + 50,
-								player.getPositionY() + 20, gc, screenWidth);
+						Projectile bullet = new Projectile("bullet.png", player.getPositionX() + 50,
+								player.getPositionY() + 20, screenWidth, 3);
 						bullet.run();
 						shot = true;
 					}
 				} else
 					shot = false;
+				if (input.contains("L")) {
+					if (!mg.isActive()) {
+						mg.play(1);
+						if (dir == 1)
+							velocity -= 50;
+						else
+							velocity += 2;
+						Projectile bullet = new Projectile("mgBullet.png", player.getPositionX() + 50,
+								player.getPositionY() + 20, screenWidth, 1);
+						bullet.run();
+					}
+				}
 
 				if (input.contains("J") && !player.isJumping() && !player.isFalling()) {
 
@@ -171,20 +182,29 @@ public class GameLauncher extends Application {
 
 				Iterator<Projectile> bulletIter = bulletList.iterator();
 				while (bulletIter.hasNext()) {
-					Sprite bullet = bulletIter.next();
-					if ((enemy.intersects(bullet))) {
+					Projectile bullet = bulletIter.next();
+					if ((enemy.getBoundary().intersects(bullet.getHitBox()))) {
 						bulletIter.remove();
-						enemy.damage();
-					} else if ((bullet.getPositionX() > screenWidth)) {
+						// bullet.kill();
+						enemy.damage(bullet.damage);
+						if (bullet.damage > 1)
+							hurtPistol.play(0);
+						else
+							hurtMg.play(0);
+
+					} else if ((bullet.x > bullet.maxRange)) {
 						bulletIter.remove();
 					}
 				}
-
 				// render
-				gc.drawImage(space, 0, 0);
+				gc.drawImage(space.getImage(), 0, 0);
+				// hana's purple 8C00FF/rgb(140,0,255)
+				Color hP = Color.rgb(140, 0, 255);
+				gc.setFill(hP);
 				gc.fillRect(0, (screenHeight / 3) + (screenHeight / 2), screenWidth, 290);
-				for (Sprite s : spriteList)
-					s.render(gc);
+				for (Mob m : mobList)
+					if (!m.isDead())
+						m.render(gc);
 				for (Projectile b : bulletList)
 					b.render(gc);
 			}
